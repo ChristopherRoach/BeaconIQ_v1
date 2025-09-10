@@ -1,0 +1,136 @@
+name: BeaconIQ_v1 CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Type Check
+        run: npm run type-check
+
+      - name: ESLint Check
+        run: npm run lint --fix
+
+      - name: Run Tests (if available)
+        run: npm test --passWithNoTests
+
+      - name: Build Application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+  deploy-production:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build for Production
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NODE_ENV: production
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          working-directory: ./
+          vercel-args: '--prod'
+
+      - name: Performance Test
+        run: |
+          echo "Waiting for deployment to be ready..."
+          sleep 30
+          # Basic smoke test
+          curl -f https://your-app.vercel.app/api/health || exit 1
+
+  deploy-preview:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build for Preview
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Deploy Preview to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          working-directory: ./
+          github-comment: true
+
+  security-scan:
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Security Audit
+        run: npm audit --audit-level=high
+
+      - name: Dependency Check
+        run: npx depcheck
