@@ -6,226 +6,307 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.4"
+  }
   public: {
     Tables: {
-      users: {
-        Row: {
-          id: string
-          email: string
-          full_name: string
-          role: string
-          school_id: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          email: string
-          full_name: string
-          role?: string
-          school_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          full_name?: string
-          role?: string
-          school_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      schools: {
-        Row: {
-          id: string
-          name: string
-          domain: string | null
-          settings: Json
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          domain?: string | null
-          settings?: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          domain?: string | null
-          settings?: Json
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      quizzes: {
-        Row: {
-          id: string
-          title: string
-          description: string | null
-          creator_id: string
-          school_id: string | null
-          settings: Json
-          student_info_fields: Json
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          title: string
-          description?: string | null
-          creator_id: string
-          school_id?: string | null
-          settings?: Json
-          student_info_fields?: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          title?: string
-          description?: string | null
-          creator_id?: string
-          school_id?: string | null
-          settings?: Json
-          student_info_fields?: Json
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      questions: {
-        Row: {
-          id: string
-          quiz_id: string
-          content: Json
-          question_type: string
-          time_limit: number | null
-          points: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          quiz_id: string
-          content: Json
-          question_type: string
-          time_limit?: number | null
-          points?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          quiz_id?: string
-          content?: Json
-          question_type?: string
-          time_limit?: number | null
-          points?: number
-          created_at?: string
-        }
-      }
-      quiz_sessions: {
-        Row: {
-          id: string
-          quiz_id: string
-          host_id: string
-          session_code: string
-          status: string
-          current_question_index: number
-          started_at: string | null
-          ended_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          quiz_id: string
-          host_id: string
-          session_code: string
-          status?: string
-          current_question_index?: number
-          started_at?: string | null
-          ended_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          quiz_id?: string
-          host_id?: string
-          session_code?: string
-          status?: string
-          current_question_index?: number
-          started_at?: string | null
-          ended_at?: string | null
-          created_at?: string
-        }
-      }
       participants: {
         Row: {
           id: string
-          session_id: string
-          participant_name: string
-          participant_data: Json
-          status: string
-          total_score: number
-          joined_at: string
+          joined_at: string | null
           last_activity: string | null
+          participant_data: Json | null
+          participant_name: string
+          session_id: string
+          status: string | null
+          total_score: number | null
         }
         Insert: {
           id?: string
-          session_id: string
-          participant_name: string
-          participant_data?: Json
-          status?: string
-          total_score?: number
-          joined_at?: string
+          joined_at?: string | null
           last_activity?: string | null
+          participant_data?: Json | null
+          participant_name: string
+          session_id: string
+          status?: string | null
+          total_score?: number | null
         }
         Update: {
           id?: string
-          session_id?: string
-          participant_name?: string
-          participant_data?: Json
-          status?: string
-          total_score?: number
-          joined_at?: string
+          joined_at?: string | null
           last_activity?: string | null
+          participant_data?: Json | null
+          participant_name?: string
+          session_id?: string
+          status?: string | null
+          total_score?: number | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      questions: {
+        Row: {
+          content: Json
+          created_at: string | null
+          id: string
+          points: number | null
+          question_type: string
+          quiz_id: string
+          time_limit: number | null
+        }
+        Insert: {
+          content: Json
+          created_at?: string | null
+          id?: string
+          points?: number | null
+          question_type: string
+          quiz_id: string
+          time_limit?: number | null
+        }
+        Update: {
+          content?: Json
+          created_at?: string | null
+          id?: string
+          points?: number | null
+          question_type?: string
+          quiz_id?: string
+          time_limit?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_sessions: {
+        Row: {
+          created_at: string | null
+          current_question_index: number | null
+          ended_at: string | null
+          host_id: string
+          id: string
+          quiz_id: string
+          session_code: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_question_index?: number | null
+          ended_at?: string | null
+          host_id: string
+          id?: string
+          quiz_id: string
+          session_code: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          current_question_index?: number | null
+          ended_at?: string | null
+          host_id?: string
+          id?: string
+          quiz_id?: string
+          session_code?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_host_id_fkey"
+            columns: ["host_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_sessions_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          created_at: string | null
+          creator_id: string
+          description: string | null
+          id: string
+          school_id: string | null
+          settings: Json | null
+          student_info_fields: Json | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          creator_id: string
+          description?: string | null
+          id?: string
+          school_id?: string | null
+          settings?: Json | null
+          student_info_fields?: Json | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          creator_id?: string
+          description?: string | null
+          id?: string
+          school_id?: string | null
+          settings?: Json | null
+          student_info_fields?: Json | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quizzes_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quizzes_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       responses: {
         Row: {
-          id: string
-          participant_id: string
-          question_id: string
           answer: Json
-          is_correct: boolean
-          points_awarded: number
-          response_time_ms: number
-          submitted_at: string
+          id: string
+          is_correct: boolean | null
+          participant_id: string
+          points_awarded: number | null
+          question_id: string
+          response_time_ms: number | null
+          submitted_at: string | null
         }
         Insert: {
-          id?: string
-          participant_id: string
-          question_id: string
           answer: Json
-          is_correct?: boolean
-          points_awarded?: number
-          response_time_ms?: number
-          submitted_at?: string
+          id?: string
+          is_correct?: boolean | null
+          participant_id: string
+          points_awarded?: number | null
+          question_id: string
+          response_time_ms?: number | null
+          submitted_at?: string | null
         }
         Update: {
-          id?: string
-          participant_id?: string
-          question_id?: string
           answer?: Json
-          is_correct?: boolean
-          points_awarded?: number
-          response_time_ms?: number
-          submitted_at?: string
+          id?: string
+          is_correct?: boolean | null
+          participant_id?: string
+          points_awarded?: number | null
+          question_id?: string
+          response_time_ms?: number | null
+          submitted_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schools: {
+        Row: {
+          created_at: string | null
+          domain: string | null
+          id: string
+          name: string
+          settings: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          name: string
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          name?: string
+          settings?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          role: string
+          school_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          role?: string
+          school_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          role?: string
+          school_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -243,140 +324,125 @@ export interface Database {
   }
 }
 
-// Helper types for common use cases
-export type User = Database['public']['Tables']['users']['Row']
-export type School = Database['public']['Tables']['schools']['Row']
-export type Quiz = Database['public']['Tables']['quizzes']['Row']
-export type Question = Database['public']['Tables']['questions']['Row']
-export type QuizSession = Database['public']['Tables']['quiz_sessions']['Row']
-export type Participant = Database['public']['Tables']['participants']['Row']
-export type Response = Database['public']['Tables']['responses']['Row']
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-// Insert types
-export type UserInsert = Database['public']['Tables']['users']['Insert']
-export type SchoolInsert = Database['public']['Tables']['schools']['Insert']
-export type QuizInsert = Database['public']['Tables']['quizzes']['Insert']
-export type QuestionInsert = Database['public']['Tables']['questions']['Insert']
-export type QuizSessionInsert = Database['public']['Tables']['quiz_sessions']['Insert']
-export type ParticipantInsert = Database['public']['Tables']['participants']['Insert']
-export type ResponseInsert = Database['public']['Tables']['responses']['Insert']
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-// Update types
-export type UserUpdate = Database['public']['Tables']['users']['Update']
-export type SchoolUpdate = Database['public']['Tables']['schools']['Update']
-export type QuizUpdate = Database['public']['Tables']['quizzes']['Update']
-export type QuestionUpdate = Database['public']['Tables']['questions']['Update']
-export type QuizSessionUpdate = Database['public']['Tables']['quiz_sessions']['Update']
-export type ParticipantUpdate = Database['public']['Tables']['participants']['Update']
-export type ResponseUpdate = Database['public']['Tables']['responses']['Update']
-
-// API Response types
-export interface ApiResponse<T = any> {
-  data?: T
-  error?: string
-  message?: string
-}
-
-export interface PaginatedResponse<T = any> {
-  data: T[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    pages: number
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-// Auth types
-export interface AuthSession {
-  access_token: string
-  refresh_token: string
-  expires_in: number
-  token_type: string
-  user: User
-}
-
-export interface LoginCredentials {
-  email: string
-  password: string
-}
-
-export interface RegisterData {
-  email: string
-  password: string
-  full_name: string
-  role?: string
-  school_id?: string
-}
-
-// Quiz and Session types
-export interface QuizSettings {
-  allowAnonymousParticipants?: boolean
-  showCorrectAnswers?: boolean
-  timeLimit?: number
-  maxParticipants?: number
-  autoAdvance?: boolean
-  shuffleQuestions?: boolean
-  shuffleAnswers?: boolean
-}
-
-export interface StudentInfoFields {
-  name: boolean
-  email?: boolean
-  class?: boolean
-  division?: boolean
-  rollNumber?: boolean
-  customFields?: Array<{
-    name: string
-    type: 'text' | 'number' | 'select'
-    required: boolean
-    options?: string[]
-  }>
-}
-
-export interface QuestionContent {
-  question: string
-  options?: string[]
-  correctAnswer?: string | number
-  explanation?: string
-  media?: {
-    type: 'image' | 'video' | 'audio'
-    url: string
-    alt?: string
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
   }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export interface ParticipantData {
-  class?: string
-  division?: string
-  rollNumber?: string
-  [key: string]: any
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-export interface ResponseAnswer {
-  selected?: string | number
-  text?: string
-  multiple?: string[] | number[]
-  [key: string]: any
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
-// Real-time event types
-export interface RealtimeEvent<T = any> {
-  eventType: 'INSERT' | 'UPDATE' | 'DELETE'
-  new?: T
-  old?: T
-  errors?: string[]
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
-// Error types
-export interface BeaconIQError extends Error {
-  code?: string
-  status?: number
-  details?: any
-}
-
-// Session status types
-export type SessionStatus = 'waiting' | 'active' | 'paused' | 'completed'
-export type ParticipantStatus = 'connected' | 'disconnected' | 'struggling'
-export type UserRole = 'super_admin' | 'admin' | 'teacher' | 'student'
-export type QuestionType = 'multiple_choice' | 'true_false' | 'short_answer' | 'essay'
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
