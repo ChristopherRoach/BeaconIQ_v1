@@ -3,13 +3,13 @@
   "name": "beaconiq-v1",
   "build": {
     "env": {
-      "NEXT_PUBLIC_SUPABASE_URL": "@next-public-supabase-url",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next-public-supabase-anon-key"
+      "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key"
     }
   },
   "env": {
-    "NEXT_PUBLIC_SUPABASE_URL": "@next-public-supabase-url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next-public-supabase-anon-key"
+    "NEXT_PUBLIC_SUPABASE_URL": "@next_public_supabase_url", 
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@next_public_supabase_anon_key"
   },
   "functions": {
     "app/api/**/*.ts": {
@@ -25,7 +25,7 @@
           "value": "*"
         },
         {
-          "key": "Access-Control-Allow-Methods",
+          "key": "Access-Control-Allow-Methods", 
           "value": "GET, POST, PUT, DELETE, OPTIONS"
         },
         {
@@ -44,7 +44,7 @@
   "redirects": [
     {
       "source": "/dashboard",
-      "destination": "/teacher",
+      "destination": "/teacher", 
       "permanent": false
     }
   ]
