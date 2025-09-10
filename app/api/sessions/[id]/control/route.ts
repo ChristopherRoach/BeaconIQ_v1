@@ -64,9 +64,9 @@ export async function PUT(
           return NextResponse.json({ error: 'Session is not active' }, { status: 400 })
         }
         updateData = {
-          current_question_index: current_question_index || (session.current_question_index + 1)
+          current_question_index: current_question_index || ((session.current_question_index || 0) + 1)
         }
-        break
+          break
 
       case 'complete':
         updateData = {
