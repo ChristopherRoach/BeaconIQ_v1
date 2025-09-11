@@ -26,7 +26,7 @@ export default function JoinQuizPage() {
     setError('')
 
     try {
-      const response = await fetch(`/api/sessions/${sessionCode.toUpperCase()}/join`, {
+      const response = await fetch(`/api/join/${sessionCode.toUpperCase()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
