@@ -1,169 +1,126 @@
-"use client"
+'use client'
+
+import { Suspense } from 'react'
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
-export default function JoinQuizPage() {
-  const [sessionCode, setSessionCode] = useState('')
-  const [participantData, setParticipantData] = useState({
-    participant_name: '',
-    class: '',
-    division: ''
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+function JoinForm() {
   const searchParams = useSearchParams()
-
-  // Pre-fill code if provided in URL
-  useState(() => {
-    const code = searchParams.get('code')
-    if (code) setSessionCode(code)
-  })
+  const [sessionCode, setSessionCode] = useState(searchParams?.get('code') || '')
+  const [participantName, setParticipantName] = useState('')
+  const [isJoining, setIsJoining] = useState(false)
+  const [error, setError] = useState('')
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
+    if (!sessionCode.trim() || !participantName.trim()) {
+      setError('Please enter both session code and your name')
+      return
+    }
+
+    setIsJoining(true)
     setError('')
 
     try {
       const response = await fetch(`/api/join/${sessionCode.toUpperCase()}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(participantData)
+        body: JSON.stringify({
+          participant_name: participantName,
+          participant_data: {}
+        })
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to join session')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to join session')
       }
 
-      // Store participant info and redirect to quiz
-      localStorage.setItem('participant_id', data.participant.id)
-      localStorage.setItem('session_id', data.participant.session_id)
-      localStorage.setItem('participant_name', participantData.participant_name)
+      const data = await response.json()
       
-      router.push(`/quiz/${data.participant.session_id}`)
-
+      // Redirect to quiz session
+      window.location.href = `/quiz/${sessionCode.toUpperCase()}`
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
-      setLoading(false)
+      setIsJoining(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div className="text-center">
-          <div className="text-6xl mb-6">🎯</div>
-          <h1 className="text-4xl font-bold text-gray-900">BeaconIQ</h1>
-          <p className="mt-4 text-lg text-gray-600">Join the quiz session</p>
-        </div>
-        
-        <div className="card">
-          <div className="p-6">
-            <form onSubmit={handleJoin} className="space-y-6">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-                  {error}
-                </div>
-              )}
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Session Code *
-                </label>
-                <input
-                  type="text"
-                  value={sessionCode}
-                  onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
-                  className="input-field text-center text-2xl font-mono tracking-widest"
-                  required
-                  maxLength={6}
-                  placeholder="XXXXXX"
-                  style={{textTransform: 'uppercase'}}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter the 6-character code from your teacher
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  value={participantData.participant_name}
-                  onChange={(e) => setParticipantData({...participantData, participant_name: e.target.value})}
-                  className="input-field"
-                  required
-                  placeholder="Enter your name"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Class
-                  </label>
-                  <input
-                    type="text"
-                    value={participantData.class}
-                    onChange={(e) => setParticipantData({...participantData, class: e.target.value})}
-                    className="input-field"
-                    placeholder="Grade/Class"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Division
-                  </label>
-                  <input
-                    type="text"
-                    value={participantData.division}
-                    onChange={(e) => setParticipantData({...participantData, division: e.target.value})}
-                    className="input-field"
-                    placeholder="Section"
-                  />
-                </div>
-              </div>
-              
-              <button
-                type="submit"
-                disabled={loading || !sessionCode || !participantData.participant_name}
-                className="btn-primary w-full py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Joining...
-                  </span>
-                ) : (
-                  'Join Quiz'
-                )}
-              </button>
-            </form>
-
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="text-center text-sm text-gray-500">
-                <p className="mb-2">🔒 Your information is secure</p>
-                <p>Need help? Contact your teacher</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center">
-          <p className="text-sm text-gray-500">
-            Powered by <span className="font-semibold text-blue-600">BeaconIQ</span>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-center text-gray-900">
+            Join Quiz Session
+          </h1>
+          <p className="mt-2 text-center text-gray-600">
+            Enter the session code provided by your instructor
           </p>
         </div>
+
+        <form onSubmit={handleJoin} className="mt-8 space-y-6">
+          <div>
+            <label htmlFor="sessionCode" className="block text-sm font-medium text-gray-700">
+              Session Code
+            </label>
+            <input
+              id="sessionCode"
+              type="text"
+              value={sessionCode}
+              onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter session code"
+              maxLength={8}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="participantName" className="block text-sm font-medium text-gray-700">
+              Your Name
+            </label>
+            <input
+              id="participantName"
+              type="text"
+              value={participantName}
+              onChange={(e) => setParticipantName(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Enter your name"
+            />
+          </div>
+
+          {error && (
+            <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isJoining}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isJoining ? 'Joining...' : 'Join Session'}
+          </button>
+        </form>
       </div>
     </div>
+  )
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <JoinForm />
+    </Suspense>
   )
 }
