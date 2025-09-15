@@ -1,339 +1,194 @@
 "use client"
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 
-interface Participant {
-  id: string
-  participant_name: string
-  participant_data: any
-  status: string
-  total_score: number
-  joined_at: string
-}
-
-interface Session {
-  id: string
-  session_code: string
-  status: string
-  current_question_index: number
-  quiz_id: string
-  quizzes?: {
-    title: string
-    description: string
-  }
-}
-
-export default function SessionManagePage({ params }: { params: { id: string } }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [actionLoading, setActionLoading] = useState('')
+export default function SessionManagePage() {
+  const params = useParams()
   const router = useRouter()
+  const sessionId = params.id as string
+  
+  const [session, setSession] = useState({
+    id: sessionId,
+    quiz_title: 'Math Quiz 1',
+    session_code: 'ABC123',
+    status: 'active',
+    current_question: 0,
+    total_questions: 10,
+    participants: [
+      { id: 1, name: 'John Doe', score: 8, answered: true },
+      { id: 2, name: 'Jane Smith', score: 6, answered: false },
+      { id: 3, name: 'Bob Johnson', score: 9, answered: true },
+      { id: 4, name: 'Alice Brown', score: 7, answered: true }
+    ]
+  })
 
-  const fetchSessionData = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('session_token')
-      if (!token) {
-        router.push('/auth/login')
-        return
-      }
+  const [currentQuestion, setCurrentQuestion] = useState({
+    text: 'What is 2 + 2?',
+    options: ['3', '4', '5', '6'],
+    responses: [2, 15, 1, 0]
+  })
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      // Fetch participants
-      const participantsResponse = await fetch(`/api/participants?session_id=${params.id}`, { headers })
-      const participantsData = await participantsResponse.json()
-
-      if (participantsResponse.ok) {
-        setParticipants(participantsData.participants || [])
-      }
-
-      // Mock session data for demo (replace with actual API call)
-      const mockSession: Session = {
-        id: params.id,
-        session_code: 'ABC123',
-        status: 'waiting',
-        current_question_index: 0,
-        quiz_id: 'quiz-1',
-        quizzes: {
-          title: 'Sample Quiz',
-          description: 'A demo quiz'
-        }
-      }
-      setSession(mockSession)
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }, [params.id, router])
-
-  useEffect(() => {
-    fetchSessionData()
-    // Set up polling for updates
-    const interval = setInterval(fetchSessionData, 3000)
-    return () => clearInterval(interval)
-  }, [fetchSessionData])
-
-  const handleSessionControl = async (action: string, additional?: any) => {
-    setActionLoading(action)
-    try {
-      const token = localStorage.getItem('session_token')
-      const response = await fetch(`/api/sessions/${params.id}/control`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action, ...additional })
+  const handleNextQuestion = () => {
+    if (session.current_question < session.total_questions - 1) {
+      setSession({
+        ...session,
+        current_question: session.current_question + 1
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Action failed')
-      }
-
-      await fetchSessionData()
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed')
-    } finally {
-      setActionLoading('')
     }
   }
 
-  const copySessionCode = () => {
-    if (session) {
-      navigator.clipboard.writeText(session.session_code)
-    }
+  const handleEndSession = () => {
+    setSession({ ...session, status: 'ended' })
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Session not found</h2>
-          <button onClick={() => router.push('/teacher')} className="btn-primary mt-4">
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const totalParticipants = session.participants.length
+  const answeredCount = session.participants.filter(p => p.answered).length
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button 
-                onClick={() => router.push('/teacher')}
-                className="text-gray-600 hover:text-gray-900"
-              >
-                ← Back to Dashboard
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  {session.quizzes?.title || 'Quiz Session'}
-                </h1>
-                <p className="text-sm text-gray-600">Live Session Management</p>
-              </div>
-            </div>
+      <header className="bg-white shadow-sm border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                session.status === 'active' 
-                  ? 'bg-green-100 text-green-800'
-                  : session.status === 'waiting'
-                  ? 'bg-yellow-100 text-yellow-800'  
-                  : session.status === 'paused'
-                  ? 'bg-orange-100 text-orange-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
-                {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+              <button onClick={() => router.push('/teacher')} className="text-2xl hover:text-blue-600 transition-colors">
+                ←
+              </button>
+              <span className="text-2xl">📊</span>
+              <span className="text-2xl font-bold text-gray-900">BeaconIQ</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className={`badge ${session.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                {session.status}
               </span>
+              <button onClick={() => router.push('/teacher')} className="btn-secondary">
+                Back to Dashboard
+              </button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto py-8 px-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
-            <button 
-              onClick={() => setError('')}
-              className="ml-2 text-red-500 hover:text-red-700"
-            >
-              ×
-            </button>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Session Info */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{session.quiz_title}</h1>
+          <div className="flex items-center space-x-6 text-gray-600">
+            <span>Session Code: <span className="font-mono font-bold text-2xl text-blue-600">{session.session_code}</span></span>
+            <span>Question {session.current_question + 1} of {session.total_questions}</span>
+            <span>{totalParticipants} Participants</span>
           </div>
-        )}
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Session Control Panel */}
-          <div className="lg:col-span-1">
+          {/* Current Question & Controls */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Question Display */}
             <div className="card">
-              <div className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Session Control</h3>
+              <div className="card-header">
+                <h2 className="text-xl font-bold text-gray-900">Current Question</h2>
+                <div className="text-sm text-gray-600">
+                  {answeredCount}/{totalParticipants} answered
+                </div>
+              </div>
+              
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                  {currentQuestion.text}
+                </h3>
                 
-                {/* Session Code Display */}
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg text-center">
-                  <p className="text-sm text-blue-600 mb-2">Session Code</p>
-                  <div className="text-3xl font-mono font-bold text-blue-900 mb-3">
-                    {session.session_code}
-                  </div>
-                  <div className="space-y-2">
-                    <button
-                      onClick={copySessionCode}
-                      className="btn-secondary text-sm w-full"
-                    >
-                      Copy Code
-                    </button>
-                  </div>
-                </div>
-
-                {/* Control Buttons */}
-                <div className="space-y-3">
-                  {session.status === 'waiting' && (
-                    <button
-                      onClick={() => handleSessionControl('start')}
-                      disabled={actionLoading === 'start'}
-                      className="btn-primary w-full"
-                    >
-                      {actionLoading === 'start' ? 'Starting...' : 'Start Quiz'}
-                    </button>
-                  )}
-
-                  {session.status === 'active' && (
-                    <>
-                      <button
-                        onClick={() => handleSessionControl('pause')}
-                        disabled={actionLoading === 'pause'}
-                        className="bg-orange-500 text-white px-4 py-2 rounded-lg w-full hover:bg-orange-600 disabled:opacity-50"
-                      >
-                        {actionLoading === 'pause' ? 'Pausing...' : 'Pause Quiz'}
-                      </button>
-                      <button
-                        onClick={() => handleSessionControl('next_question', { current_question_index: session.current_question_index + 1 })}
-                        disabled={actionLoading === 'next_question'}
-                        className="btn-secondary w-full"
-                      >
-                        {actionLoading === 'next_question' ? 'Loading...' : 'Next Question'}
-                      </button>
-                    </>
-                  )}
-
-                  {session.status === 'paused' && (
-                    <button
-                      onClick={() => handleSessionControl('resume')}
-                      disabled={actionLoading === 'resume'}
-                      className="btn-primary w-full"
-                    >
-                      {actionLoading === 'resume' ? 'Resuming...' : 'Resume Quiz'}
-                    </button>
-                  )}
-
-                  {['active', 'paused'].includes(session.status) && (
-                    <button
-                      onClick={() => handleSessionControl('complete')}
-                      disabled={actionLoading === 'complete'}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg w-full hover:bg-red-600 disabled:opacity-50"
-                    >
-                      {actionLoading === 'complete' ? 'Ending...' : 'End Quiz'}
-                    </button>
-                  )}
-                </div>
-
-                {/* Session Stats */}
-                <div className="mt-6 pt-6 border-t">
-                  <h4 className="font-medium mb-3">Session Stats</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Participants:</span>
-                      <span className="font-medium">{participants.length}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  {currentQuestion.options.map((option, index) => (
+                    <div key={index} className="bg-gray-50 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold">{String.fromCharCode(65 + index)}. {option}</span>
+                        <span className="badge badge-info">{currentQuestion.responses[index]}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${(currentQuestion.responses[index] / totalParticipants) * 100}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Question:</span>
-                      <span className="font-medium">{session.current_question_index + 1}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <span className="font-medium">{session.status}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Session Controls */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="text-lg font-bold text-gray-900">Session Controls</h3>
+              </div>
+              
+              <div className="flex flex-wrap gap-4">
+                {session.status === 'active' && (
+                  <>
+                    <button 
+                      onClick={handleNextQuestion}
+                      disabled={session.current_question >= session.total_questions - 1}
+                      className="btn-primary"
+                    >
+                      Next Question
+                    </button>
+                    <button className="btn-secondary">
+                      Pause Session
+                    </button>
+                    <button 
+                      onClick={handleEndSession}
+                      className="btn-danger"
+                    >
+                      End Session
+                    </button>
+                  </>
+                )}
+                {session.status === 'ended' && (
+                  <div className="bg-gray-100 rounded-xl p-4 w-full text-center">
+                    <p className="text-gray-600">Session has ended</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Participants List */}
-          <div className="lg:col-span-2">
+          {/* Participants Panel */}
+          <div className="lg:col-span-1">
             <div className="card">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Participants ({participants.length})</h3>
-                  <button 
-                    onClick={fetchSessionData}
-                    className="btn-secondary text-sm"
-                  >
-                    Refresh
-                  </button>
-                </div>
-                
-                {participants.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="text-gray-400 text-4xl mb-4">👥</div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">No participants yet</h4>
-                    <p className="text-gray-600 mb-4">Share the session code for students to join</p>
-                    <div className="bg-gray-100 p-3 rounded-lg inline-block">
-                      <span className="font-mono text-xl font-bold">{session.session_code}</span>
+              <div className="card-header">
+                <h3 className="text-lg font-bold text-gray-900">Participants</h3>
+                <span className="badge badge-info">{totalParticipants}</span>
+              </div>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {session.participants.map((participant) => (
+                  <div key={participant.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${participant.answered ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                      <span className="font-medium">{participant.name}</span>
                     </div>
+                    <span className="font-bold text-blue-600">{participant.score}</span>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {participants.map((participant) => (
-                      <div key={participant.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className={`w-3 h-3 rounded-full ${
-                            participant.status === 'connected' ? 'bg-green-500' : 'bg-gray-400'
-                          }`}></div>
-                          <div>
-                            <p className="font-medium">{participant.participant_name}</p>
-                            <p className="text-sm text-gray-600">
-                              Score: {participant.total_score} | 
-                              Joined: {new Date(participant.joined_at).toLocaleTimeString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            participant.status === 'connected' 
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {participant.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                ))}
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="card mt-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Stats</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Average Score:</span>
+                  <span className="font-bold">7.5</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Response Rate:</span>
+                  <span className="font-bold">{Math.round((answeredCount / totalParticipants) * 100)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Progress:</span>
+                  <span className="font-bold">{Math.round(((session.current_question + 1) / session.total_questions) * 100)}%</span>
+                </div>
               </div>
             </div>
           </div>
