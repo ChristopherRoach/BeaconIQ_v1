@@ -4,8 +4,25 @@ import { useRouter } from 'next/navigation'
 
 export default function TeacherDashboard() {
   const [user, setUser] = useState<any>(null)
-  const [quizzes, setQuizzes] = useState([])
-  const [activeSessions, setActiveSessions] = useState([])
+  interface Quiz {
+  id: number
+  title: string
+  questions: number
+  created_at: string
+  participants: number
+}
+
+interface ActiveSession {
+  id: number
+  quiz_title: string
+  session_code: string
+  participants: number
+  status: string
+}
+
+const [quizzes, setQuizzes] = useState<Quiz[]>([])
+const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
+
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
