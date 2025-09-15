@@ -2,9 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function TeacherDashboard() {
-  const [user, setUser] = useState<any>(null)
-  interface Quiz {
+interface Quiz {
   id: number
   title: string
   questions: number
@@ -20,9 +18,10 @@ interface ActiveSession {
   status: string
 }
 
-const [quizzes, setQuizzes] = useState<Quiz[]>([])
-const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
-
+export default function TeacherDashboard() {
+  const [user, setUser] = useState<any>(null)
+  const [quizzes, setQuizzes] = useState<Quiz[]>([])
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -149,7 +148,7 @@ const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
                 {activeSessions.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">No active sessions</p>
                 ) : (
-                  activeSessions.map((session: any) => (
+                  activeSessions.map((session) => (
                     <div key={session.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-gray-900">{session.quiz_title}</h4>
@@ -159,7 +158,7 @@ const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
                       </div>
                       <p className="text-sm text-gray-600 mb-2">Code: {session.session_code}</p>
                       <p className="text-sm text-gray-600">{session.participants} participants</p>
-                      <button 
+                      <button
                         onClick={() => router.push(`/teacher/session/${session.id}`)}
                         className="btn-primary w-full mt-3 text-sm"
                       >
@@ -177,7 +176,7 @@ const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
             <div className="card">
               <div className="card-header">
                 <h3 className="text-xl font-bold text-gray-900">Recent Quizzes</h3>
-                <button 
+                <button
                   onClick={() => router.push('/teacher/quiz/create')}
                   className="btn-primary"
                 >
@@ -185,12 +184,12 @@ const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
                 </button>
               </div>
               <div className="space-y-4">
-                {quizzes.map((quiz: any) => (
+                {quizzes.map((quiz) => (
                   <div key={quiz.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold text-gray-900">{quiz.title}</h4>
                       <div className="flex space-x-2">
-                        <button 
+                        <button
                           onClick={() => router.push(`/teacher/quiz/${quiz.id}`)}
                           className="btn-secondary text-sm"
                         >
