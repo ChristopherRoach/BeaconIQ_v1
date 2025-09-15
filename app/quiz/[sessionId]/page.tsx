@@ -1,428 +1,197 @@
 "use client"
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
 
-interface Question {
-  id: string
-  content: any
-  question_type: string
-  options?: string[]
-  time_limit?: number
-  points?: number
-}
-
-interface Session {
-  id: string
-  status: string
-  current_question_index: number
-  quizzes?: {
-    title: string
-  }
-}
-
-interface ResponseFeedback {
-  is_correct: boolean
-  points_awarded: number
-  correct_answer?: any
-}
-
-export default function QuizPage({ params }: { params: { sessionId: string } }) {
-  const [session, setSession] = useState<Session | null>(null)
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null)
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
-  const [timeLeft, setTimeLeft] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
+export default function QuizPage() {
+  const params = useParams()
+  const sessionId = params.sessionId as string
+  
+  const [currentQuestion, setCurrentQuestion] = useState(0)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  const [timeLeft, setTimeLeft] = useState(30)
+  const [quizData, setQuizData] = useState({
+    title: 'Sample Quiz',
+    questions: [
+      {
+        text: 'What is 2 + 2?',
+        options: ['3', '4', '5', '6'],
+        correct_answer: 1
+      },
+      {
+        text: 'What is the capital of France?',
+        options: ['London', 'Berlin', 'Paris', 'Madrid'],
+        correct_answer: 2
+      }
+    ]
+  })
+  const [score, setScore] = useState(0)
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const [quizCompleted, setQuizCompleted] = useState(false)
-  const [feedback, setFeedback] = useState<ResponseFeedback | null>(null)
-  const [totalScore, setTotalScore] = useState(0)
-  const router = useRouter()
-
-  // Mock questions for demo (replace with actual API)
-  const mockQuestions: Question[] = [
-    {
-      id: '1',
-      content: {
-        question: 'What is 2 + 2?',
-        options: ['3', '4', '5', '6']
-      },
-      question_type: 'multiple_choice',
-      time_limit: 30,
-      points: 1
-    },
-    {
-      id: '2',
-      content: {
-        question: 'What is the capital of France?',
-        options: ['London', 'Berlin', 'Paris', 'Madrid']
-      },
-      question_type: 'multiple_choice',
-      time_limit: 25,
-      points: 1
-    },
-    {
-      id: '3',
-      content: {
-        question: 'Is the Earth round?',
-        options: ['True', 'False']
-      },
-      question_type: 'true_false',
-      time_limit: 20,
-      points: 1
-    }
-  ]
-
-  // Fetch current question based on session state
-  const fetchCurrentQuestion = useCallback(async (questionIndex?: number) => {
-    try {
-      const index = questionIndex ?? session?.current_question_index ?? 0
-      const question = mockQuestions[index] || mockQuestions[0]
-      
-      setCurrentQuestion(question)
-      setTimeLeft(question.time_limit || 30)
-      setFeedback(null)
-      setSelectedAnswer(null)
-      
-    } catch (err) {
-      console.error('Failed to fetch question:', err)
-    }
-  }, [session, mockQuestions])
-
-  // Fetch session data
-  const fetchSessionData = useCallback(async () => {
-    try {
-      const participantId = localStorage.getItem('participant_id')
-      const sessionId = localStorage.getItem('session_id')
-      
-      if (!participantId || sessionId !== params.sessionId) {
-        router.push('/join')
-        return
-      }
-
-      // Mock session data for demo (replace with actual API call)
-      const mockSession: Session = {
-        id: params.sessionId,
-        status: 'active',
-        current_question_index: 0,
-        quizzes: {
-          title: 'Demo Quiz'
-        }
-      }
-      
-      setSession(mockSession)
-      
-      if (!currentQuestion) {
-        fetchCurrentQuestion()
-      }
-      
-    } catch (err) {
-      console.error('Failed to fetch session:', err)
-      setError('Failed to load quiz session')
-    } finally {
-      setLoading(false)
-    }
-  }, [params.sessionId, router, currentQuestion, fetchCurrentQuestion])
 
   useEffect(() => {
-    fetchSessionData()
-    // Set up polling for session updates
-    const interval = setInterval(fetchSessionData, 3000)
-    return () => clearInterval(interval)
-  }, [fetchSessionData])
-
-  // Timer countdown
-  useEffect(() => {
-    if (timeLeft && timeLeft > 0 && session?.status === 'active' && !feedback) {
+    if (timeLeft > 0 && !isSubmitted) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
       return () => clearTimeout(timer)
-    } else if (timeLeft === 0 && !submitting) {
-      // Auto-submit when time runs out
+    } else if (timeLeft === 0 && !isSubmitted) {
       handleSubmitAnswer()
     }
-  }, [timeLeft, session?.status, feedback, submitting])
+  }, [timeLeft, isSubmitted])
 
-  const handleSubmitAnswer = async () => {
-    if (submitting || !currentQuestion || !session) return
-
-    setSubmitting(true)
-    
-    try {
-      const participantId = localStorage.getItem('participant_id')
-      
-      const response = await fetch(`/api/participants/${participantId}/responses`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          question_id: currentQuestion.id,
-          answer: { selected: selectedAnswer },
-          response_time_ms: timeLeft ? (currentQuestion.time_limit || 30) - timeLeft : 0
-        })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit answer')
+  const handleSubmitAnswer = () => {
+    if (selectedAnswer !== null) {
+      if (selectedAnswer === quizData.questions[currentQuestion].correct_answer) {
+        setScore(score + 1)
       }
-
-      // Show feedback
-      const isCorrect = selectedAnswer === getCorrectAnswer()
-      const points = isCorrect ? (currentQuestion.points || 1) : 0
-      
-      setFeedback({
-        is_correct: isCorrect,
-        points_awarded: points
-      })
-
-      setTotalScore(prev => prev + points)
-      
-      // Auto-advance after showing feedback
-      setTimeout(() => {
-        const nextIndex = session.current_question_index + 1
-        if (nextIndex < mockQuestions.length) {
-          setSession({...session, current_question_index: nextIndex})
-          fetchCurrentQuestion(nextIndex)
-        } else {
-          setQuizCompleted(true)
-        }
-      }, 2000)
-      
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit answer')
-    } finally {
-      setSubmitting(false)
     }
-  }
-
-  const getCorrectAnswer = () => {
-    // Mock correct answers (replace with actual logic)
-    const correctAnswers: { [key: string]: string } = {
-      '1': '4',
-      '2': 'Paris',
-      '3': 'True'
-    }
-    return correctAnswers[currentQuestion?.id || ''] || ''
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading quiz...</p>
-        </div>
-      </div>
-    )
+    setIsSubmitted(true)
+    
+    setTimeout(() => {
+      if (currentQuestion + 1 < quizData.questions.length) {
+        setCurrentQuestion(currentQuestion + 1)
+        setSelectedAnswer(null)
+        setTimeLeft(30)
+        setIsSubmitted(false)
+      } else {
+        setQuizCompleted(true)
+      }
+    }, 2000)
   }
 
   if (quizCompleted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-50">
-        <div className="max-w-md w-full p-8 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
+        <div className="card max-w-md w-full text-center">
           <div className="text-6xl mb-6">🎉</div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Quiz Complete!</h1>
-          <div className="bg-white p-6 rounded-xl shadow-soft mb-6">
-            <h2 className="text-2xl font-bold text-blue-600 mb-2">Your Score</h2>
-            <p className="text-4xl font-bold text-gray-900">{totalScore}</p>
-            <p className="text-gray-600">out of {mockQuestions.length} points</p>
+          <div className="bg-gradient-to-r from-blue-500 to-green-500 text-white rounded-xl p-6 mb-6">
+            <p className="text-lg mb-2">Your Score</p>
+            <p className="text-4xl font-bold">{score}/{quizData.questions.length}</p>
+            <p className="text-lg">{Math.round((score / quizData.questions.length) * 100)}%</p>
           </div>
-          <p className="text-gray-600 mb-6">
-            Thank you for participating! Your responses have been submitted.
-          </p>
-          <button
-            onClick={() => router.push('/join')}
-            className="btn-primary"
+          <p className="text-gray-600 mb-6">Great job! Your results have been submitted.</p>
+          <button 
+            onClick={() => window.location.href = '/'}
+            className="btn-primary w-full"
           >
-            Join Another Quiz
+            Return to Home
           </button>
         </div>
       </div>
     )
   }
 
-  if (!session || session.status === 'waiting') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Waiting for quiz to start...</h2>
-          <p className="text-gray-600 mb-6">Your teacher will start the quiz shortly</p>
-          <div className="animate-pulse flex justify-center">
-            <div className="h-2 bg-blue-300 rounded w-64"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (session.status === 'paused') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="text-4xl mb-4">⏸️</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Quiz Paused</h2>
-          <p className="text-gray-600 mb-6">The teacher has paused the quiz. Please wait...</p>
-          <div className="animate-pulse flex justify-center">
-            <div className="h-2 bg-orange-300 rounded w-64"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (!currentQuestion) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-pulse bg-gray-200 h-8 w-64 rounded mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading question...</p>
-        </div>
-      </div>
-    )
-  }
+  const question = quizData.questions[currentQuestion]
+  const progress = ((currentQuestion + 1) / quizData.questions.length) * 100
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                {session.quizzes?.title || 'Quiz'}
-              </h1>
-              <p className="text-sm text-gray-600">
-                Question {session.current_question_index + 1} of {mockQuestions.length}
-              </p>
+      <div className="max-w-4xl mx-auto mb-6">
+        <div className="bg-white rounded-2xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">{quizData.title}</h1>
+            <div className="text-sm text-gray-600">
+              Session: <span className="font-mono font-bold">{sessionId}</span>
             </div>
-            <div className="flex items-center space-x-4">
-              {/* Score */}
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Score</p>
-                <p className="text-lg font-bold text-blue-600">{totalScore}</p>
-              </div>
-              
-              {/* Timer */}
-              {timeLeft && !feedback && (
-                <div className="flex items-center space-x-2">
-                  <div className={`text-lg font-mono font-bold ${
-                    timeLeft <= 10 ? 'text-red-600' : 'text-gray-900'
-                  }`}>
-                    {timeLeft}s
-                  </div>
-                  <div className={`w-3 h-3 rounded-full ${
-                    timeLeft <= 10 ? 'bg-red-500 animate-pulse' : 'bg-green-500'
-                  }`}></div>
-                </div>
-              )}
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="mb-4">
+            <div className="flex justify-between text-sm text-gray-600 mb-2">
+              <span>Question {currentQuestion + 1} of {quizData.questions.length}</span>
+              <span>{Math.round(progress)}% Complete</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Timer */}
+          <div className="flex justify-center">
+            <div className={`inline-flex items-center px-4 py-2 rounded-full font-bold ${
+              timeLeft <= 10 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+            }`}>
+              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              {timeLeft}s
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto py-8 px-4">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
-          </div>
-        )}
+      {/* Question */}
+      <div className="max-w-4xl mx-auto">
+        <div className="card">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+            {question.text}
+          </h2>
 
-        {/* Feedback Display */}
-        {feedback && (
-          <div className={`p-6 rounded-lg mb-6 ${
-            feedback.is_correct 
-              ? 'bg-green-50 border border-green-200 text-green-800'
-              : 'bg-red-50 border border-red-200 text-red-800'
-          }`}>
-            <div className="flex items-center space-x-3">
-              <div className="text-3xl">
-                {feedback.is_correct ? '✅' : '❌'}
-              </div>
-              <div>
-                <p className="font-semibold text-lg">
-                  {feedback.is_correct ? 'Correct!' : 'Incorrect'}
-                </p>
-                <p className="text-sm">
-                  Points earned: {feedback.points_awarded}
-                </p>
-                {!feedback.is_correct && (
-                  <p className="text-sm mt-1">
-                    Correct answer: {getCorrectAnswer()}
-                  </p>
-                )}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            {question.options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => !isSubmitted && setSelectedAnswer(index)}
+                disabled={isSubmitted}
+                className={`p-6 rounded-xl border-2 transition-all duration-200 text-left font-semibold ${
+                  isSubmitted
+                    ? index === question.correct_answer
+                      ? 'border-green-500 bg-green-50 text-green-800'
+                      : index === selectedAnswer && index !== question.correct_answer
+                      ? 'border-red-500 bg-red-50 text-red-800'
+                      : 'border-gray-200 bg-gray-50 text-gray-500'
+                    : selectedAnswer === index
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-700'
+                }`}
+              >
+                <div className="flex items-center">
+                  <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 text-gray-700 font-bold mr-4">
+                    {String.fromCharCode(65 + index)}
+                  </span>
+                  {option}
+                  {isSubmitted && index === question.correct_answer && (
+                    <span className="ml-auto text-green-600">✓</span>
+                  )}
+                  {isSubmitted && index === selectedAnswer && index !== question.correct_answer && (
+                    <span className="ml-auto text-red-600">✗</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {!isSubmitted && (
+            <div className="text-center">
+              <button
+                onClick={handleSubmitAnswer}
+                disabled={selectedAnswer === null}
+                className="btn-primary text-lg px-8 py-4"
+              >
+                Submit Answer
+              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Question Card */}
-        <div className="card mb-8">
-          <div className="p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              {currentQuestion.content.question}
-            </h2>
-
-            {currentQuestion.question_type === 'multiple_choice' && currentQuestion.content.options && (
-              <div className="space-y-3">
-                {currentQuestion.content.options.map((option: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => !feedback && setSelectedAnswer(option)}
-                    disabled={submitting || feedback !== null}
-                    className={`quiz-option ${
-                      selectedAnswer === option ? 'selected' : ''
-                    } ${
-                      feedback && option === getCorrectAnswer() ? 'correct' : 
-                      feedback && selectedAnswer === option && !feedback.is_correct ? 'incorrect' : ''
-                    } ${submitting || feedback ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <div className="flex items-center">
-                      <div className={`w-6 h-6 rounded-full border-2 mr-3 flex items-center justify-center ${
-                        selectedAnswer === option 
-                          ? 'border-blue-500 bg-blue-500' 
-                          : 'border-gray-300'
-                      }`}>
-                        {selectedAnswer === option && (
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        )}
-                      </div>
-                      <span className="font-medium">{option}</span>
-                    </div>
-                  </button>
-                ))}
+          {isSubmitted && (
+            <div className="text-center">
+              <div className={`inline-flex items-center px-6 py-3 rounded-xl font-bold ${
+                selectedAnswer === question.correct_answer 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                {selectedAnswer === question.correct_answer ? '🎉 Correct!' : '❌ Incorrect'}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={handleSubmitAnswer}
-            disabled={!selectedAnswer || submitting || feedback !== null}
-            className="btn-primary px-8 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <span className="flex items-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Submitting...
-              </span>
-            ) : feedback ? (
-              'Waiting for next question...'
-            ) : (
-              'Submit Answer'
-            )}
-          </button>
-        </div>
-
-        {/* Participant Info */}
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
-            Logged in as: <span className="font-medium">{localStorage.getItem('participant_name')}</span>
-          </p>
+              <p className="text-gray-600 mt-4">
+                {currentQuestion + 1 < quizData.questions.length 
+                  ? 'Next question loading...' 
+                  : 'Calculating final score...'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
