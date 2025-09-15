@@ -2,261 +2,196 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-interface Quiz {
-  id: string
-  title: string
-  description: string
-  created_at: string
-  settings: any
-}
-
-interface Session {
-  id: string
-  session_code: string
-  status: string
-  created_at: string
-  quizzes: { title: string }
-}
-
 export default function TeacherDashboard() {
-  const [quizzes, setQuizzes] = useState<Quiz[]>([])
-  const [sessions, setSessions] = useState<Session[]>([])
+  const [user, setUser] = useState<any>(null)
+  const [quizzes, setQuizzes] = useState([])
+  const [activeSessions, setActiveSessions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const router = useRouter()
 
   useEffect(() => {
-    fetchData()
+    const userProfile = localStorage.getItem('user_profile')
+    if (!userProfile) {
+      router.push('/auth/login')
+      return
+    }
+    setUser(JSON.parse(userProfile))
+    fetchQuizzes()
+    fetchActiveSessions()
   }, [])
 
-  const fetchData = async () => {
-    try {
-      const token = localStorage.getItem('session_token')
-      if (!token) {
-        router.push('/auth/login')
-        return
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-
-      // Fetch quizzes
-      const quizzesResponse = await fetch('/api/quizzes', { headers })
-      const quizzesData = await quizzesResponse.json()
-
-      if (!quizzesResponse.ok) {
-        throw new Error(quizzesData.error || 'Failed to fetch quizzes')
-      }
-
-      // Fetch sessions  
-      const sessionsResponse = await fetch('/api/sessions', { headers })
-      const sessionsData = await sessionsResponse.json()
-
-      if (!sessionsResponse.ok) {
-        throw new Error(sessionsData.error || 'Failed to fetch sessions')
-      }
-
-      setQuizzes(quizzesData.quizzes || [])
-      setSessions(sessionsData.sessions || [])
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
+  const fetchQuizzes = async () => {
+    // Mock data for now
+    setQuizzes([
+      { id: 1, title: 'Math Quiz 1', questions: 10, created_at: '2025-09-10', participants: 25 },
+      { id: 2, title: 'Science Review', questions: 15, created_at: '2025-09-12', participants: 18 },
+      { id: 3, title: 'History Test', questions: 20, created_at: '2025-09-14', participants: 32 }
+    ])
+    setLoading(false)
   }
 
-  const createQuiz = () => {
-    router.push('/teacher/quiz/create')
+  const fetchActiveSessions = async () => {
+    // Mock data for now
+    setActiveSessions([
+      { id: 1, quiz_title: 'Math Quiz 1', session_code: 'ABC123', participants: 15, status: 'active' },
+      { id: 2, quiz_title: 'Science Review', session_code: 'XYZ789', participants: 8, status: 'paused' }
+    ])
   }
 
-  const startSession = async (quizId: string) => {
-    try {
-      const token = localStorage.getItem('session_token')
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ quiz_id: quizId })
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create session')
-      }
-
-      router.push(`/teacher/session/${data.session.id}`)
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start session')
-    }
-  }
-
-  const logout = () => {
-    localStorage.removeItem('session_token')
-    localStorage.removeItem('user_profile')
-    router.push('/auth/login')
+  const handleLogout = () => {
+    localStorage.clear()
+    router.push('/')
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+        <div className="text-center">
+          <div className="loading-spinner mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">BeaconIQ</h1>
-              <p className="text-sm text-gray-600">Teacher Dashboard</p>
+      <header className="bg-white shadow-sm border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <span className="text-2xl">📊</span>
+              <span className="text-2xl font-bold text-gray-900">BeaconIQ</span>
             </div>
-            <button
-              onClick={logout}
-              className="btn-secondary"
-            >
-              Logout
-            </button>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Welcome, {user?.full_name}</span>
+              <button onClick={handleLogout} className="btn-secondary text-sm">
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto py-8 px-4">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-gray-600">Manage your quizzes and live sessions</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+          <p className="text-gray-600">Manage your quizzes and view session analytics</p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Quizzes Section */}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="card">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">My Quizzes</h3>
-                <button onClick={createQuiz} className="btn-primary">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Quizzes</p>
+                <p className="text-2xl font-bold text-gray-900">{quizzes.length}</p>
+              </div>
+              <div className="text-3xl">📝</div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Active Sessions</p>
+                <p className="text-2xl font-bold text-gray-900">{activeSessions.length}</p>
+              </div>
+              <div className="text-3xl">🔴</div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Participants</p>
+                <p className="text-2xl font-bold text-gray-900">75</p>
+              </div>
+              <div className="text-3xl">👥</div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Avg. Score</p>
+                <p className="text-2xl font-bold text-gray-900">87%</p>
+              </div>
+              <div className="text-3xl">📈</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Active Sessions */}
+          <div className="lg:col-span-1">
+            <div className="card">
+              <div className="card-header">
+                <h3 className="text-xl font-bold text-gray-900">Active Sessions</h3>
+              </div>
+              <div className="space-y-4">
+                {activeSessions.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No active sessions</p>
+                ) : (
+                  activeSessions.map((session: any) => (
+                    <div key={session.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold text-gray-900">{session.quiz_title}</h4>
+                        <span className={`badge ${session.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
+                          {session.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">Code: {session.session_code}</p>
+                      <p className="text-sm text-gray-600">{session.participants} participants</p>
+                      <button 
+                        onClick={() => router.push(`/teacher/session/${session.id}`)}
+                        className="btn-primary w-full mt-3 text-sm"
+                      >
+                        Manage Session
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Quizzes */}
+          <div className="lg:col-span-2">
+            <div className="card">
+              <div className="card-header">
+                <h3 className="text-xl font-bold text-gray-900">Recent Quizzes</h3>
+                <button 
+                  onClick={() => router.push('/teacher/quiz/create')}
+                  className="btn-primary"
+                >
                   Create Quiz
                 </button>
               </div>
-              
-              <div className="space-y-3">
-                {quizzes.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400 text-lg mb-2">📝</div>
-                    <p className="text-gray-500">No quizzes created yet.</p>
-                    <p className="text-sm text-gray-400">Create your first quiz to get started!</p>
-                  </div>
-                ) : (
-                  quizzes.map((quiz) => (
-                    <div key={quiz.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{quiz.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{quiz.description}</p>
-                          <p className="text-xs text-gray-400 mt-2">
-                            Created: {new Date(quiz.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="ml-4 space-y-2">
-                          <button 
-                            onClick={() => startSession(quiz.id)}
-                            className="btn-primary text-sm px-3 py-1.5"
-                          >
-                            Start Session
-                          </button>
-                        </div>
+              <div className="space-y-4">
+                {quizzes.map((quiz: any) => (
+                  <div key={quiz.id} className="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-gray-900">{quiz.title}</h4>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => router.push(`/teacher/quiz/${quiz.id}`)}
+                          className="btn-secondary text-sm"
+                        >
+                          View
+                        </button>
+                        <button className="btn-primary text-sm">
+                          Start Session
+                        </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Sessions */}
-          <div className="card">
-            <div className="p-6">
-              <h3 className="text-xl font-semibold mb-4">Recent Sessions</h3>
-              
-              <div className="space-y-3">
-                {sessions.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-400 text-lg mb-2">🎯</div>
-                    <p className="text-gray-500">No sessions yet.</p>
-                    <p className="text-sm text-gray-400">Start a quiz session to see it here!</p>
-                  </div>
-                ) : (
-                  sessions.map((session) => (
-                    <div key={session.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="font-medium text-gray-900">{session.quizzes?.title || 'Quiz'}</h4>
-                          <p className="text-sm text-gray-600 mt-1">Code: <span className="font-mono font-bold">{session.session_code}</span></p>
-                          <div className="flex items-center mt-2">
-                            <span className="text-xs text-gray-500">Status:</span>
-                            <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${
-                              session.status === 'active' 
-                                ? 'bg-green-100 text-green-800'
-                                : session.status === 'waiting'
-                                ? 'bg-yellow-100 text-yellow-800'  
-                                : session.status === 'paused'
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {session.status}
-                            </span>
-                          </div>
-                        </div>
-                        {['active', 'waiting', 'paused'].includes(session.status) && (
-                          <button 
-                            onClick={() => router.push(`/teacher/session/${session.id}`)}
-                            className="btn-secondary text-sm px-3 py-1.5"
-                          >
-                            Manage
-                          </button>
-                        )}
-                      </div>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <span>📝 {quiz.questions} questions</span>
+                      <span>👥 {quiz.participants} participants</span>
+                      <span>📅 {new Date(quiz.created_at).toLocaleDateString()}</span>
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="mt-8">
-          <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 text-white">
-            <h3 className="text-xl font-semibold mb-2">Quick Actions</h3>
-            <p className="text-blue-100 mb-4">Get started with BeaconIQ</p>
-            <div className="flex flex-wrap gap-3">
-              <button 
-                onClick={createQuiz}
-                className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
-              >
-                Create New Quiz
-              </button>
-              <button 
-                onClick={() => router.push('/teacher/help')}
-                className="bg-blue-400 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-300 transition-colors"
-              >
-                Help & Tutorials
-              </button>
             </div>
           </div>
         </div>
